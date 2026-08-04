@@ -1,24 +1,8 @@
-# ------------------------------------------------------------------------------
-# Terraform & provider version pinning + remote backend.
+# State lives in GCS so two engineers cannot apply over each other. The bucket
+# is locked natively and versioned; see ADR 0004.
 #
-# Why pin? Different engineers running different provider versions against the
-# same state is a classic source of "works on my machine" drift. Pinning the
-# major version (~> 6.0) plus committing .terraform.lock.hcl gives everyone
-# byte-identical providers.
-#
-# Why a GCS backend? Requirement "Ops": engineers must collaborate without
-# side effects. GCS gives us:
-#   - a single shared source of truth for state
-#   - native state locking (lock object per state file) -> two engineers
-#     cannot run `apply` concurrently and corrupt state
-#   - object versioning (configured in ./bootstrap) -> state history/rollback
-#
-# The bucket name is intentionally NOT hardcoded (it is project-specific).
-# Initialise with:
-#   terraform init -backend-config="bucket=<PROJECT_ID>-tf-state"
-# or with the committed example file:
+# The bucket name is project-specific, so it is supplied at init:
 #   terraform init -backend-config=backend.hcl
-# ------------------------------------------------------------------------------
 
 terraform {
   required_version = ">= 1.10"

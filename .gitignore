@@ -1,22 +1,20 @@
-# Local Terraform state & workspace internals — remote state is the truth.
+# Local state — the bucket is the truth.
 .terraform/
 terraform.tfstate
 terraform.tfstate.backup
 *.tfstate.*
 
-# Environment-specific, potentially sensitive inputs.
+# Environment-specific, sometimes sensitive.
 *.tfvars
 backend.hcl
 
-# Doc tooling: dependencies and the intermediate render.
-# solution-architecture.pdf IS committed — it is a deliverable, generated
-# from docs/ by tools/make-pdf.js. Never edit it by hand.
+# Doc tooling. solution-architecture.pdf is committed; it is generated from
+# docs/ by tools/make-pdf.js, so never edit it by hand.
 tools/node_modules/
 tools/print.html
 
-# Crash logs & plan files (plans can embed sensitive values).
+# Plans can embed sensitive values.
 crash.log
 *.tfplan
 
-# NOTE: .terraform.lock.hcl is deliberately COMMITTED — it pins provider
-# checksums so every engineer and CI runner uses identical providers.
+# .terraform.lock.hcl is committed on purpose — it pins provider checksums.

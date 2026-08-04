@@ -1,14 +1,8 @@
-# ------------------------------------------------------------------------------
-# BOOTSTRAP — run once, with local state, before anything else.
-#
-# Chicken-and-egg problem: Terraform needs a remote backend for team
-# collaboration, but the backend bucket itself must be created by *something*.
-# This tiny root module solves that. Its own state is local and thereafter
-# irrelevant (the bucket is protected by prevent_destroy).
+# Creates the GCS bucket that holds the root module's state. Runs once, with
+# local state, because a backend cannot create its own bucket.
 #
 #   cd bootstrap
 #   terraform init && terraform apply -var="project_id=<PROJECT_ID>"
-# ------------------------------------------------------------------------------
 
 terraform {
   required_version = ">= 1.10"
@@ -46,26 +40,21 @@ resource "google_storage_bucket" "tf_state" {
   name     = "${var.project_id}-tf-state"
   location = var.region
 
-  # --- Collaboration & safety controls -----------------------------------
-  # Versioning lets us roll back a corrupted/incorrectly-pushed state file.
+  # Roll back a corrupted or wrongly-pushed state file.
   versioning {
     enabled = true
   }
 
-  # Uniform bucket-level access: IAM only, no per-object ACLs. One access
-  # model to reason about = fewer least-privilege mistakes.
+  # IAM only, no per-object ACLs.
   uniform_bucket_level_access = true
 
-  # State contains secrets-adjacent data (resource IDs, sometimes outputs).
-  # Never expose it publicly.
   public_access_prevention = "enforced"
 
-  # Belt-and-braces: refuse to destroy the bucket via Terraform.
   lifecycle {
     prevent_destroy = true
   }
 
-  # Keep the last 10 noncurrent state versions, drop older ones.
+  # Keep the last 10 old versions.
   lifecycle_rule {
     condition {
       num_newer_versions = 10
@@ -79,6 +68,6 @@ resource "google_storage_bucket" "tf_state" {
 }
 
 output "state_bucket" {
-  description = "Pass this to the root module: terraform init -backend-config=\"bucket=<this>\""
+  description = "Pass to the root module: terraform init -backend-config=\"bucket=<this>\""
   value       = google_storage_bucket.tf_state.name
 }

@@ -1,25 +1,21 @@
 #!/usr/bin/env bash
-# ------------------------------------------------------------------------------
-# Cost hygiene: tear everything down after developing, re-apply a few hours
-# before the presentation (per the challenge's free-tier advice).
+# Tears everything down. Cloud NAT and the load balancer bill while idle, so
+# run this after every session.
 #
-# Order matters: delete Kubernetes LoadBalancer Services FIRST, otherwise the
-# GCLB forwarding rules/target pools they created outside Terraform's
-# knowledge will block VPC deletion.
+# The namespace goes first: Kubernetes created load balancer forwarding rules
+# that Terraform does not know about, and they block the VPC delete.
 #
 # Usage: ./scripts/destroy.sh <PROJECT_ID> [CLUSTER_NAME] [REGION]
-# ------------------------------------------------------------------------------
 
-set -o errexit  # abort the script when any command exits non-zero
-set -o nounset  # abort when an undefined variable is referenced
-set -o pipefail # a pipeline fails if ANY command in it fails, not just the last
+set -o errexit
+set -o nounset
+set -o pipefail
 
 PROJECT_ID="${1:?Usage: destroy.sh <PROJECT_ID> [CLUSTER_NAME] [REGION]}"
 CLUSTER_NAME="${2:-online-boutique}"
 REGION="${3:-europe-west4}"
 
-# Credentials fetch may fail if the cluster is already gone — that is an
-# acceptable state for a destroy script, hence the explicit '|| true'.
+# Both of these fail if the cluster is already gone, which is fine here.
 gcloud container clusters get-credentials "${CLUSTER_NAME}" \
   --region "${REGION}" \
   --project "${PROJECT_ID}" \

@@ -1,4 +1,4 @@
-// architecture.md -> architecture.pdf
+// docs/*.md -> solution-architecture.pdf
 //
 // The Markdown is the single source of truth; this renders it. Everything
 // Obsidian understands natively (frontmatter, callouts, mermaid fences) has
@@ -8,8 +8,11 @@
 //   npm install marked mermaid puppeteer-core
 //   node make-pdf.js [out.pdf]
 //
-// Needs a Chromium-family browser at BROWSER (default /usr/bin/brave).
-// Regenerate whenever architecture.md changes, or the PDF silently drifts.
+// Needs a Chromium-family browser at BROWSER (default /usr/bin/brave):
+//   BROWSER=/usr/bin/chromium node make-pdf.js
+//   # fish: env BROWSER=/usr/bin/chromium node make-pdf.js
+//
+// Regenerate whenever anything under docs/ changes, or the PDF silently drifts.
 
 const fs = require('fs');
 const path = require('path');

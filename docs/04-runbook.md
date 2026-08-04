@@ -10,7 +10,7 @@ tags:
 
 Everything needed to take an empty project to a working shop and back again. This document is task-oriented — the reasoning behind these steps lives in [02-architecture](02-architecture.md) and [decisions/](decisions/).
 
-Commands are `bash`. In fish, `export FOO=bar` becomes `set -x FOO bar`; the scripts themselves declare `#!/usr/bin/env bash` and are unaffected.
+Commands run in both `bash` and `fish`. Variables are written `"$PROJECT_ID"` rather than `"${PROJECT_ID}"` because fish rejects the braced form. The two constructs that genuinely differ — setting a variable, and prefixing a command with one — carry a `# fish:` line beneath them. The scripts declare `#!/usr/bin/env bash` themselves, so they run the same way from either shell.
 
 ## Order of operations
 
@@ -41,6 +41,15 @@ Step 1 uses local state and is irrelevant thereafter — the bucket it creates i
 
 ## Prerequisites
 
+> [!tip] The scripted path
+> [scripts/setup.sh](../scripts/setup.sh) performs every step in this section — tooling check, authentication, project, billing, ADC, bootstrap APIs and Terraform validation — and each step checks before it acts, so it is safe to re-run.
+>
+> ```bash
+> ./scripts/setup.sh <PROJECT_ID> <BILLING_ACCOUNT_ID>
+> ```
+>
+> It creates nothing in Google Cloud; the state bucket and the platform remain `terraform apply`'s job. The rest of this section is what it does and why, for when a step fails or you would rather drive it by hand.
+
 ### Tooling
 
 ```bash
@@ -54,16 +63,32 @@ paru -S google-cloud-cli google-cloud-cli-gke-gcloud-auth-plugin
 
 Terraform must be `>= 1.10` ([versions.tf](../versions.tf)).
 
+### Validate the code first
+
+This needs no credentials, no billing and no project, so it runs the moment the clone finishes — before a single Google Cloud resource exists.
+
+```bash
+# bootstrap/ and the root are independent modules; check both
+cd bootstrap && terraform init -backend=false && terraform validate && cd ..
+
+terraform init -backend=false
+terraform fmt -check -recursive
+terraform validate
+```
+
+`-backend=false` skips backend initialisation, which is what makes this possible before the state bucket exists. A schema or wiring error surfaces here in seconds rather than eight minutes into a cluster create.
+
 ### Project and billing
 
 ```bash
 export PROJECT_ID=your-project-id
+# fish: set -x PROJECT_ID your-project-id
 
 gcloud auth login
-gcloud projects create "${PROJECT_ID}"
+gcloud projects create "$PROJECT_ID"
 gcloud billing accounts list
-gcloud billing projects link "${PROJECT_ID}" --billing-account=XXXXXX-XXXXXX-XXXXXX
-gcloud config set project "${PROJECT_ID}"
+gcloud billing projects link "$PROJECT_ID" --billing-account=XXXXXX-XXXXXX-XXXXXX
+gcloud config set project "$PROJECT_ID"
 ```
 
 Billing must be linked even on trial credits — GKE, Cloud NAT and the load balancer all refuse to create without it.
@@ -72,7 +97,7 @@ Billing must be linked even on trial credits — GKE, Cloud NAT and the load bal
 
 ```bash
 gcloud auth application-default login
-gcloud auth application-default set-quota-project "${PROJECT_ID}"
+gcloud auth application-default set-quota-project "$PROJECT_ID"
 ```
 
 > [!failure] These are two different credentials
@@ -90,17 +115,17 @@ gcloud services enable serviceusage.googleapis.com cloudresourcemanager.googleap
 
 ```bash
 # 1. State bucket — local state, once per project
-cd bootstrap && terraform init && terraform apply -var="project_id=${PROJECT_ID}" && cd ..
+cd bootstrap && terraform init && terraform apply -var="project_id=$PROJECT_ID" && cd ..
 
 # 2. Point the root module at that bucket
-sed "s/YOUR_PROJECT_ID/${PROJECT_ID}/" backend.hcl.example > backend.hcl
+sed "s/YOUR_PROJECT_ID/$PROJECT_ID/" backend.hcl.example > backend.hcl
 terraform init -backend-config=backend.hcl
 
 # 3. Platform — ~10 minutes, mostly cluster creation
-terraform apply -var="project_id=${PROJECT_ID}"
+terraform apply -var="project_id=$PROJECT_ID"
 
 # 4. Application
-./scripts/deploy.sh "${PROJECT_ID}"
+./scripts/deploy.sh "$PROJECT_ID"
 ```
 
 `deploy.sh` prints the shop's URL on success, having already checked it returns HTTP 200.
@@ -109,13 +134,15 @@ Useful variations:
 
 ```bash
 # Run the load generator for a live autoscaling demo (costs money while up)
-DEPLOY_LOADGENERATOR=true ./scripts/deploy.sh "${PROJECT_ID}"
+DEPLOY_LOADGENERATOR=true ./scripts/deploy.sh "$PROJECT_ID"
+# fish: env DEPLOY_LOADGENERATOR=true ./scripts/deploy.sh $PROJECT_ID
 
 # Try a different upstream release
-MANIFEST_VERSION=v0.10.5 ./scripts/deploy.sh "${PROJECT_ID}"
+MANIFEST_VERSION=v0.10.5 ./scripts/deploy.sh "$PROJECT_ID"
+# fish: env MANIFEST_VERSION=v0.10.5 ./scripts/deploy.sh $PROJECT_ID
 
 # Lock the control plane to your own address instead of 0.0.0.0/0
-terraform apply -var="project_id=${PROJECT_ID}" \
+terraform apply -var="project_id=$PROJECT_ID" \
   -var='authorized_networks=[{cidr_block="203.0.113.4/32",display_name="office"}]'
 ```
 
@@ -141,7 +168,7 @@ gcloud compute instances list \
 terraform output node_service_account
 
 # The roles that account actually holds — expect exactly five
-gcloud projects get-iam-policy "${PROJECT_ID}" \
+gcloud projects get-iam-policy "$PROJECT_ID" \
   --flatten='bindings[].members' \
   --filter="bindings.members:online-boutique-nodes@" \
   --format='value(bindings.role)'
@@ -150,7 +177,7 @@ gcloud projects get-iam-policy "${PROJECT_ID}" \
 kubectl get pods --namespace boutique
 
 # State locking is real: run this during an apply and watch it block
-terraform plan -var="project_id=${PROJECT_ID}"
+terraform plan -var="project_id=$PROJECT_ID"
 ```
 
 ## Troubleshooting
@@ -171,7 +198,7 @@ terraform plan -var="project_id=${PROJECT_ID}"
 
 ```bash
 # From the repository root
-./scripts/destroy.sh "${PROJECT_ID}"
+./scripts/destroy.sh "$PROJECT_ID"
 ```
 
 > [!failure] Run it from the repository root

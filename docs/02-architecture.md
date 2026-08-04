@@ -186,6 +186,7 @@ A thin root that only wires modules together. Each module is a blast-radius boun
 │   ├── network/            # VPC, subnet + secondary ranges, Router, NAT
 │   └── gke/                # Node SA + IAM, private Autopilot cluster
 ├── scripts/
+│   ├── setup.sh            # Prerequisites: auth, billing, ADC, APIs, validate
 │   ├── deploy.sh           # Mock CD: apply + health wait + smoke test
 │   └── destroy.sh          # Teardown: K8s LBs first, then terraform destroy
 └── docs/                   # These documents; decisions/ holds the ADRs

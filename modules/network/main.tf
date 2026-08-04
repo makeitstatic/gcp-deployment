@@ -1,30 +1,12 @@
-# ------------------------------------------------------------------------------
-# Network module — custom-mode VPC + VPC-native GKE ranges + private egress.
-#
-# Decisions & alternatives:
-#
-# 1) Custom-mode VPC (auto_create_subnetworks = false)
-#    Auto-mode creates a subnet per region with predefined ranges — that would
-#    collide with our mandated 10.0.0.0/16 plan and is an anti-pattern for
-#    anything beyond experiments. Custom mode = we own the address plan.
-#
-# 2) VPC-native (alias IP) ranges for Pods/Services
-#    The two secondary ranges implement the required 10.1.0.0/16 (Pods) and
-#    10.2.0.0/16 (Services). Alternative: routes-based clusters — legacy,
-#    no longer recommended, and Autopilot doesn't support them anyway.
-#
-# 3) Cloud NAT + Private Google Access instead of public node IPs
-#    Nodes get NO external IPs (see gke module). Private Google Access lets
-#    them reach Google APIs (Artifact Registry, logging) over internal
-#    routing; Cloud NAT provides controlled egress for anything external
-#    (e.g. pulling an image from Docker Hub) without any inbound exposure.
-#    Alternative: public nodes — simpler, but a needlessly larger attack
-#    surface; rejected under the least-privilege/security requirement.
-# ------------------------------------------------------------------------------
+# VPC, the subnet carrying all three mandated ranges, and NAT egress for the
+# private nodes.
 
 resource "google_compute_network" "vpc" {
-  name                    = var.network_name
-  project                 = var.project_id
+  name    = var.network_name
+  project = var.project_id
+
+  # Custom mode. Auto mode picks its own ranges per region and would collide
+  # with the mandated address plan.
   auto_create_subnetworks = false
   routing_mode            = "REGIONAL"
 }
@@ -35,26 +17,24 @@ resource "google_compute_subnetwork" "gke" {
   region  = var.region
   network = google_compute_network.vpc.id
 
-  # Nodes: 10.0.0.0/16 (challenge requirement)
+  # Nodes.
   ip_cidr_range = var.subnet_nodes_cidr
 
-  # Pods: 10.1.0.0/16 (challenge requirement)
+  # Pods and Services, as alias IP ranges. The GKE module binds them by name.
   secondary_ip_range {
     range_name    = "pods"
     ip_cidr_range = var.pods_cidr
   }
 
-  # Services: 10.2.0.0/16 (challenge requirement)
   secondary_ip_range {
     range_name    = "services"
     ip_cidr_range = var.services_cidr
   }
 
-  # Reach Google APIs without public IPs.
+  # Lets nodes reach Google APIs without public IPs.
   private_ip_google_access = true
 
-  # VPC Flow Logs: cheap, sampled network telemetry for security forensics
-  # and troubleshooting. 50% sampling keeps demo cost negligible.
+  # Sampled at 50%: enough for forensics, cheap enough for a demo.
   log_config {
     aggregation_interval = "INTERVAL_5_MIN"
     flow_sampling        = 0.5
@@ -62,7 +42,11 @@ resource "google_compute_subnetwork" "gke" {
   }
 }
 
-# --- Controlled egress for private nodes -------------------------------------
+# --- Egress for private nodes -------------------------------------------------
+
+# Nodes have no external IPs, so anything not on Google's network (a Docker Hub
+# pull, for example) leaves through here.
+
 resource "google_compute_router" "router" {
   name    = "${var.network_name}-router"
   project = var.project_id
@@ -79,8 +63,7 @@ resource "google_compute_router_nat" "nat" {
   nat_ip_allocate_option             = "AUTO_ONLY"
   source_subnetwork_ip_ranges_to_nat = "ALL_SUBNETWORKS_ALL_IP_RANGES"
 
-  # Log NAT errors only — enough signal for debugging blocked egress
-  # without paying for every translation event.
+  # Errors only. Logging every translation is expensive and rarely read.
   log_config {
     enable = true
     filter = "ERRORS_ONLY"

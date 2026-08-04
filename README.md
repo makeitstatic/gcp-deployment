@@ -31,20 +31,24 @@ Full prerequisites — including the GKE auth plugin and the Application Default
 
 ```bash
 export PROJECT_ID=your-project-id
+# fish: set -x PROJECT_ID your-project-id
+
+# Prerequisites: tooling, auth, billing, ADC, APIs, validation — idempotent
+./scripts/setup.sh "$PROJECT_ID" <BILLING_ACCOUNT_ID>
 
 # State bucket, once per project
-cd bootstrap && terraform init && terraform apply -var="project_id=${PROJECT_ID}" && cd ..
+cd bootstrap && terraform init && terraform apply -var="project_id=$PROJECT_ID" && cd ..
 
 # Platform, ~10 min
-sed "s/YOUR_PROJECT_ID/${PROJECT_ID}/" backend.hcl.example > backend.hcl
+sed "s/YOUR_PROJECT_ID/$PROJECT_ID/" backend.hcl.example > backend.hcl
 terraform init -backend-config=backend.hcl
-terraform apply -var="project_id=${PROJECT_ID}"
+terraform apply -var="project_id=$PROJECT_ID"
 
 # Application, then verify
-./scripts/deploy.sh "${PROJECT_ID}"
+./scripts/deploy.sh "$PROJECT_ID"
 
 # Afterwards — from the repository root
-./scripts/destroy.sh "${PROJECT_ID}"
+./scripts/destroy.sh "$PROJECT_ID"
 ```
 
 Tear it down after every session: Cloud NAT and the load balancer bill while idle, and a month of leaving it up costs roughly a hundred times what demonstrating it costs ([05-cost](docs/05-cost.md#the-number-that-matters-more)).
@@ -77,6 +81,7 @@ Tear it down after every session: Cloud NAT and the load balancer bill while idl
 │   ├── network/            # VPC, subnet + secondary ranges, Router, NAT
 │   └── gke/                # Node SA + IAM, private Autopilot cluster
 ├── scripts/
+│   ├── setup.sh            # Prerequisites: auth, billing, ADC, APIs, validate
 │   ├── deploy.sh           # Mock CD: apply + health wait + smoke test
 │   └── destroy.sh          # Teardown: K8s LBs first, then terraform destroy
 ├── docs/                   # Documentation; decisions/ holds the ADRs

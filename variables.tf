@@ -4,7 +4,7 @@ variable "project_id" {
 }
 
 variable "region" {
-  description = "Deployment region. europe-west4 (Eemshaven, NL) chosen for low latency from the Netherlands; any region works."
+  description = "Deployment region. europe-west4 for low latency from the Netherlands."
   type        = string
   default     = "europe-west4"
 }
@@ -15,18 +15,8 @@ variable "cluster_name" {
   default     = "online-boutique"
 }
 
-# ------------------------------------------------------------------------------
-# Networking — the three ranges are hard requirements from the challenge.
-#
-# Nodes:    10.0.0.0/16  -> primary range of the subnet (VMs/nodes live here)
-# Pods:     10.1.0.0/16  -> secondary range, alias IPs for Pods (VPC-native)
-# Services: 10.2.0.0/16  -> secondary range for ClusterIP Services
-#
-# Honest note for the panel: /16 for nodes (65k hosts) and /16 for services
-# (65k ClusterIPs) is far larger than any realistic need — I would normally
-# right-size (e.g. /22 nodes, /20 services) because VPC ranges are hard to
-# reclaim later. Here the spec wins; being spec-driven is itself the point.
-# ------------------------------------------------------------------------------
+# Node, Pod and Service ranges are fixed by the brief.
+# The /16s are far larger than this workload needs — see ADR 0005.
 
 variable "subnet_nodes_cidr" {
   description = "Primary subnet range (GKE nodes)."
@@ -47,18 +37,13 @@ variable "services_cidr" {
 }
 
 variable "master_ipv4_cidr" {
-  description = "RFC1918 /28 for the GKE control plane peering (private cluster). Must not overlap the ranges above."
+  description = "RFC1918 /28 for the control plane. Must not overlap the ranges above."
   type        = string
   default     = "172.16.0.0/28"
 }
 
 variable "authorized_networks" {
-  description = <<-EOT
-    CIDRs allowed to reach the (public) control-plane endpoint.
-    Default 0.0.0.0/0 keeps the demo friction-free for reviewers; in
-    production I would restrict this to office/VPN egress ranges or go
-    fully private endpoint + IAP/bastion.
-  EOT
+  description = "CIDRs allowed to reach the control plane endpoint. Open by default to keep the demo reproducible; restrict in production. See ADR 0002."
   type = list(object({
     cidr_block   = string
     display_name = string
@@ -70,12 +55,7 @@ variable "authorized_networks" {
 }
 
 variable "enable_binary_authorization" {
-  description = <<-EOT
-    Enforce Binary Authorization on the cluster. Disabled by default because
-    the Online Boutique sample images are unsigned public images and would be
-    blocked. Enabled in a real delivery pipeline where our own CI signs
-    attestations (see README, 'Delivery gate').
-  EOT
+  description = "Enforce Binary Authorization. Off by default because the upstream images are unsigned. See ADR 0006."
   type        = bool
   default     = false
 }

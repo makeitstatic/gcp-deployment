@@ -1,26 +1,14 @@
-# ------------------------------------------------------------------------------
-# Root composition.
-#
-# Structure decision: a thin root that only wires modules together.
-#   modules/network -> VPC, subnet + secondary ranges, Cloud Router, Cloud NAT
-#   modules/gke     -> least-privilege node SA, GKE Autopilot private cluster
-#
-# Why modules at all for something this small? The Ops requirement. Modules
-# give reviewable blast-radius boundaries, enable per-module ownership, and
-# are the unit of reuse when this pattern is stamped out per environment
-# (dev/stage/prod directories or workspaces) later.
-# ------------------------------------------------------------------------------
+# Wires the two modules together. Nothing else lives here.
+# Split into modules so engineers can own and change them separately, which is
+# what the Ops requirement asks for.
 
-# --- Enable required APIs -----------------------------------------------------
-# Codifying API enablement means a brand-new empty project converges with a
-# single `terraform apply` — no clickops prerequisites for a colleague.
 locals {
   services = [
     "compute.googleapis.com",
     "container.googleapis.com",
     "artifactregistry.googleapis.com",
     "iam.googleapis.com",
-    "iamcredentials.googleapis.com", # Workload Identity Federation for CI
+    "iamcredentials.googleapis.com",
     "cloudresourcemanager.googleapis.com",
     "logging.googleapis.com",
     "monitoring.googleapis.com",
@@ -28,17 +16,15 @@ locals {
   ]
 }
 
+# Enabling these in code means an empty project needs no manual setup first.
 resource "google_project_service" "required" {
   for_each = toset(local.services)
   service  = each.value
 
-  # Don't disable APIs on destroy: other resources/projects may rely on them
-  # and re-enabling is slow. Destroy should remove OUR resources, not
-  # project-level capabilities.
+  # Leave them enabled on destroy — other things in the project may need them.
   disable_on_destroy = false
 }
 
-# --- Network ------------------------------------------------------------------
 module "network" {
   source = "./modules/network"
 
@@ -52,7 +38,6 @@ module "network" {
   depends_on = [google_project_service.required]
 }
 
-# --- GKE ----------------------------------------------------------------------
 module "gke" {
   source = "./modules/gke"
 
