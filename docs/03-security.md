@@ -44,7 +44,7 @@ flowchart LR
 
     subgraph node["NODE PLANE"]
       direction TB
-      nsa["online-boutique-nodes@"]
+      nsa["gcp-deploy-nodes@"]
       roles["logging.logWriter<br/>monitoring.metricWriter<br/>monitoring.viewer<br/>artifactregistry.reader<br/>stackdriver.resourceMetadata.writer"]
       nodes["Autopilot nodes<br/>auto_provisioning_defaults"]
       nsa --> roles

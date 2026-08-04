@@ -19,6 +19,7 @@ One file per decision, in [Michael Nygard's format](https://cognitect.com/blog/2
 | [0005](0005-mandated-cidr-sizing.md) | Implement the mandated CIDR sizing, and record the disagreement | Accepted |
 | [0006](0006-binary-authorization-off-by-default.md) | Binary Authorization wired but disabled by default | Accepted |
 | [0007](0007-pin-manifests-to-release-tag.md) | Pin upstream manifests to a release tag, not a branch | Accepted |
+| [0008](0008-explicit-plan-gate.md) | An explicit saved-plan gate before apply | Accepted |
 
 ## Conventions
 

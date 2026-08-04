@@ -53,8 +53,8 @@ if (!FILES.length) throw new Error(`no documents found under ${DOCS}`);
 // same one in CSS, or labels get clipped mid-word.
 const MONO = 'DejaVu Sans Mono';
 
-const DOC_TITLE = 'Online Boutique on Google Cloud';
-const DOC_SUBTITLE = 'Solution architecture, decisions and runbook';
+const DOC_TITLE = 'gcp-deploy';
+const DOC_SUBTITLE = 'Online Boutique on Google Cloud — architecture, decisions and runbook';
 
 // ---- shared marked configuration -------------------------------------------
 const slugs = new Set();
@@ -582,7 +582,7 @@ console.log(`html: ${(html.length / 1e6).toFixed(2)} MB · ${toc.length} section
   const foot =
     `<div style="width:100%;font-family:${MONO},monospace;font-size:7pt;color:#6E7F85;` +
     `padding:0 12mm;display:flex;justify-content:space-between;">` +
-    `<span>Online Boutique on Google Cloud — Solution Architecture</span>` +
+    `<span>gcp-deploy — Online Boutique on Google Cloud</span>` +
     `<span class="pageNumber"></span></div>`;
 
   await page.pdf({

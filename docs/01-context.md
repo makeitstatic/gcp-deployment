@@ -24,7 +24,7 @@ Each maps to a specific resource, so compliance is verifiable in code rather tha
 | R3 | Services on `10.2.0.0/16` | same | Secondary range `services`, bound via `ip_allocation_policy` |
 | R4 | Least privilege throughout | [modules/gke/main.tf](../modules/gke/main.tf) | Dedicated node service account replacing the Compute default; private nodes; NAT-only egress; authorized networks; Shielded nodes and no privileged Pods enforced by Autopilot |
 | R5 | Engineers collaborate without side effects | [bootstrap/](../bootstrap/main.tf), [versions.tf](../versions.tf), [.gitignore](../.gitignore) | Versioned remote state with native locking; pinned providers; modules as ownership boundaries; APIs enabled in code |
-| R6 | Application deployed via a pipeline | [scripts/deploy.sh](../scripts/deploy.sh) | Mock CD job: fail-fast, idempotent, health-gated, smoke-tested, pinned to a release tag |
+| R6 | Application deployed via a pipeline | [scripts/50-deploy.sh](../scripts/50-deploy.sh) | Mock CD job: fail-fast, idempotent, health-gated, smoke-tested, pinned to a release tag. One of seven ordered stages any orchestrator can drive |
 
 ## Non-goals
 

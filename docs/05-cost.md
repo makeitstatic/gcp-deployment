@@ -67,14 +67,14 @@ The free tier covers one cluster's management fee, taking it to roughly **$159/m
 | Left running for a month | ~$159–232 |
 | Infrastructure up, app deleted | ~$105/month (cluster fee + NAT; the LB goes with the namespace) |
 
-Leaving it up for a month costs over a hundred times what actually demonstrating it costs. That asymmetry is the entire justification for [destroy.sh](../scripts/destroy.sh) and for treating teardown as part of the workflow rather than housekeeping.
+Leaving it up for a month costs over a hundred times what actually demonstrating it costs. That asymmetry is the entire justification for [70-destroy.sh](../scripts/70-destroy.sh) and for treating teardown as part of the workflow rather than housekeeping.
 
 ## Cost controls already in the repository
 
 | Control | Where | Saves |
 |---|---|---|
-| `loadgenerator` scaled to 0 by default | [deploy.sh](../scripts/deploy.sh) | 300m CPU / 256 Mi billed continuously — and it generates NAT-processed traffic |
-| One-command teardown | [destroy.sh](../scripts/destroy.sh) | Everything except the state bucket |
+| `loadgenerator` scaled to 0 by default | [50-deploy.sh](../scripts/50-deploy.sh) | 300m CPU / 256 Mi billed continuously — and it generates NAT-processed traffic |
+| One-command teardown | [70-destroy.sh](../scripts/70-destroy.sh) | Everything except the state bucket |
 | Flow logs sampled at 50% | [modules/network/main.tf](../modules/network/main.tf) | Half the log ingestion, same forensic value at this scale |
 | NAT logging `ERRORS_ONLY` | [modules/network/main.tf](../modules/network/main.tf) | Logging every translation event would dwarf the signal |
 | Autopilot over Standard | [modules/gke/main.tf](../modules/gke/main.tf) | No idle node capacity — you pay for Pods, not for headroom |

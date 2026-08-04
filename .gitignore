@@ -17,4 +17,7 @@ tools/print.html
 crash.log
 *.tfplan
 
+# Personal working notes, never part of the deliverable.
+notes/
+
 # .terraform.lock.hcl is committed on purpose — it pins provider checksums.

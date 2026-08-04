@@ -15,7 +15,7 @@ terraform {
   }
 
   backend "gcs" {
-    prefix = "online-boutique/root"
+    prefix = "gcp-deploy/root"
   }
 }
 

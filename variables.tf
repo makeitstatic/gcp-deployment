@@ -10,9 +10,9 @@ variable "region" {
 }
 
 variable "cluster_name" {
-  description = "Name of the GKE cluster."
+  description = "Name of the GKE cluster. Also prefixes the VPC and the node service account."
   type        = string
-  default     = "online-boutique"
+  default     = "gcp-deploy"
 }
 
 # Node, Pod and Service ranges are fixed by the brief.

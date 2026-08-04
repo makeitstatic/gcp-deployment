@@ -1,4 +1,4 @@
-# Online Boutique on Google Cloud
+# gcp-deploy
 
 Terraform that takes an **empty Google Cloud project** to a private, least-privilege **GKE Autopilot** environment running Google's [Online Boutique](https://github.com/GoogleCloudPlatform/microservices-demo), deployed by a script deliberately shaped like a CD job.
 
@@ -33,22 +33,14 @@ Full prerequisites — including the GKE auth plugin and the Application Default
 export PROJECT_ID=your-project-id
 # fish: set -x PROJECT_ID your-project-id
 
-# Prerequisites: tooling, auth, billing, ADC, APIs, validation — idempotent
-./scripts/setup.sh "$PROJECT_ID" <BILLING_ACCOUNT_ID>
+./scripts/10-preflight.sh                                  # local checks, no credentials
+./scripts/20-bootstrap.sh "$PROJECT_ID" <BILLING_ACCOUNT>  # project, billing, state backend
+./scripts/30-plan.sh "$PROJECT_ID"                         # read the plan before continuing
+./scripts/40-apply.sh                                      # applies exactly that plan, ~10 min
+./scripts/50-deploy.sh "$PROJECT_ID"                       # the application
+./scripts/60-verify.sh "$PROJECT_ID"                       # assert every requirement
 
-# State bucket, once per project
-cd bootstrap && terraform init && terraform apply -var="project_id=$PROJECT_ID" && cd ..
-
-# Platform, ~10 min
-sed "s/YOUR_PROJECT_ID/$PROJECT_ID/" backend.hcl.example > backend.hcl
-terraform init -backend-config=backend.hcl
-terraform apply -var="project_id=$PROJECT_ID"
-
-# Application, then verify
-./scripts/deploy.sh "$PROJECT_ID"
-
-# Afterwards — from the repository root
-./scripts/destroy.sh "$PROJECT_ID"
+./scripts/70-destroy.sh "$PROJECT_ID"                      # afterwards
 ```
 
 Tear it down after every session: Cloud NAT and the load balancer bill while idle, and a month of leaving it up costs roughly a hundred times what demonstrating it costs ([05-cost](docs/05-cost.md#the-number-that-matters-more)).
@@ -63,7 +55,7 @@ Tear it down after every session: Cloud NAT and the load balancer bill while idl
 | [04-runbook](docs/04-runbook.md) | Prerequisites, deploy, verify, troubleshoot, tear down |
 | [05-cost](docs/05-cost.md) | What Autopilot actually bills, computed from the manifest; free tier versus production |
 | [06-roadmap](docs/06-roadmap.md) | What I would do next, ranked, and why |
-| [decisions/](docs/decisions/) | Seven ADRs — the *why* behind each choice |
+| [decisions/](docs/decisions/) | Eight ADRs — the *why* behind each choice |
 
 [**solution-architecture.pdf**](solution-architecture.pdf) is all of the above as one document, for reading without cloning. It is generated from the Markdown by [tools/make-pdf.js](tools/make-pdf.js) — never edit it by hand.
 
@@ -80,13 +72,20 @@ Tear it down after every session: Cloud NAT and the load balancer bill while idl
 ├── modules/
 │   ├── network/            # VPC, subnet + secondary ranges, Router, NAT
 │   └── gke/                # Node SA + IAM, private Autopilot cluster
-├── scripts/
-│   ├── setup.sh            # Prerequisites: auth, billing, ADC, APIs, validate
-│   ├── deploy.sh           # Mock CD: apply + health wait + smoke test
-│   └── destroy.sh          # Teardown: K8s LBs first, then terraform destroy
+├── scripts/                # Seven ordered stages — the number is the order
+│   ├── lib.sh              # Shared helpers and defaults, sourced by each stage
+│   ├── 10-preflight.sh     # Tooling, fmt, validate — no credentials, creates nothing
+│   ├── 20-bootstrap.sh     # Project, billing, ADC, APIs, state bucket, init
+│   ├── 30-plan.sh          # Writes a reviewable tfplan
+│   ├── 40-apply.sh         # Applies exactly that plan
+│   ├── 50-deploy.sh        # Mock CD: apply + health wait + smoke test
+│   ├── 60-verify.sh        # Asserts every requirement, non-zero on failure
+│   └── 70-destroy.sh       # Teardown: K8s LBs first, then terraform destroy
 ├── docs/                   # Documentation; decisions/ holds the ADRs
 └── tools/make-pdf.js       # Renders docs/ into solution-architecture.pdf
 ```
+
+There is no runner and no build tool. Each stage takes `PROJECT_ID` the same way, is safe to re-run, and exits non-zero on failure — so a person, a Cloud Build step or a GitHub Actions job can drive the same scripts without anything being ported first.
 
 ## The short version of the design
 
@@ -95,3 +94,5 @@ Tear it down after every session: Cloud NAT and the load balancer bill while idl
 - **Private nodes, NAT-only egress**, and a control-plane endpoint filtered by authorized networks ([ADR 0002](docs/decisions/0002-private-nodes-public-endpoint.md)).
 - **Versioned, natively locked remote state** — "collaborate without side effects" is a state problem before it is anything else ([ADR 0004](docs/decisions/0004-gcs-remote-state.md)).
 - **The mandated /16s implemented exactly**, with the disagreement about their size recorded rather than silently corrected ([ADR 0005](docs/decisions/0005-mandated-cidr-sizing.md)).
+- **A saved plan reviewed before it is applied**, because until CI provides a gate this is the gate ([ADR 0008](docs/decisions/0008-explicit-plan-gate.md)).
+- **Requirements asserted, not claimed** — [60-verify.sh](scripts/60-verify.sh) checks the mandated ranges are *bound to the cluster*, that nodes carry the dedicated service account rather than the Compute default, and that the shop answers, then exits non-zero if any of it is untrue.

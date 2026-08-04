@@ -12,7 +12,7 @@ tags:
 
 ## Context
 
-[deploy.sh](../scripts/deploy.sh) fetches Online Boutique's manifests from the upstream repository over HTTPS and applies them. It originally resolved `master`.
+[50-deploy.sh](../../scripts/50-deploy.sh) fetches Online Boutique's manifests from the upstream repository over HTTPS and applies them. It originally resolved `master`.
 
 A deployment script that resolves a moving branch has no reproducibility. The same command, run twice a month apart, can deploy different images, different resource requests, even different objects — and nothing in the output says so. Two failures follow:
 

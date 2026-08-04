@@ -54,7 +54,7 @@ flowchart LR
     class sign,cluster good;
 ```
 
-Three properties this buys that [deploy.sh](../scripts/deploy.sh) cannot: CI never holds cluster credentials (Argo pulls), only attested digests run ([ADR 0006](decisions/0006-binary-authorization-off-by-default.md) flips to enforced), and CI authenticates to Google through Workload Identity Federation, so no service-account key exists anywhere in the chain.
+Three properties this buys that [50-deploy.sh](../scripts/50-deploy.sh) cannot: CI never holds cluster credentials (Argo pulls), only attested digests run ([ADR 0006](decisions/0006-binary-authorization-off-by-default.md) flips to enforced), and CI authenticates to Google through Workload Identity Federation, so no service-account key exists anywhere in the chain.
 
 ### 5. Gateway API behind a global ALB
 

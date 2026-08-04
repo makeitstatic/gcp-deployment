@@ -20,7 +20,7 @@ This is the highest-severity default in a standard GKE deployment, and it is sil
 
 ## Decision
 
-Create a dedicated service account, `online-boutique-nodes@`, and bind exactly the five roles Google documents as the minimum for a functioning node:
+Create a dedicated service account, `gcp-deploy-nodes@`, and bind exactly the five roles Google documents as the minimum for a functioning node:
 
 | Role | Needed for |
 |---|---|

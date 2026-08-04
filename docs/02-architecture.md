@@ -56,10 +56,10 @@ flowchart TB
 
       state[("GCS bucket · terraform state<br/>versioned · UBLA · public access blocked<br/>native locking · prevent_destroy")]
       cp["GKE control plane<br/>peered on 172.16.0.0/28<br/>master_authorized_networks"]
-      sa["Node service account<br/>online-boutique-nodes@<br/>5 narrow roles"]
+      sa["Node service account<br/>gcp-deploy-nodes@<br/>5 narrow roles"]
       lb["Network load balancer<br/>Service frontend-external"]
 
-      subgraph vpc["CUSTOM-MODE VPC · online-boutique-vpc"]
+      subgraph vpc["CUSTOM-MODE VPC · gcp-deploy-vpc"]
         direction TB
 
         subgraph sub["SUBNET 10.0.0.0/16 · nodes · flow logs 50%"]
@@ -185,10 +185,15 @@ A thin root that only wires modules together. Each module is a blast-radius boun
 ├── modules/
 │   ├── network/            # VPC, subnet + secondary ranges, Router, NAT
 │   └── gke/                # Node SA + IAM, private Autopilot cluster
-├── scripts/
-│   ├── setup.sh            # Prerequisites: auth, billing, ADC, APIs, validate
-│   ├── deploy.sh           # Mock CD: apply + health wait + smoke test
-│   └── destroy.sh          # Teardown: K8s LBs first, then terraform destroy
+├── scripts/                # Seven ordered stages — the number is the order
+│   ├── lib.sh              # Shared helpers and defaults, sourced by each stage
+│   ├── 10-preflight.sh     # Tooling, fmt, validate — no credentials
+│   ├── 20-bootstrap.sh     # Project, billing, ADC, APIs, state bucket, init
+│   ├── 30-plan.sh          # Writes a reviewable tfplan
+│   ├── 40-apply.sh         # Applies exactly that plan
+│   ├── 50-deploy.sh        # Mock CD: apply + health wait + smoke test
+│   ├── 60-verify.sh        # Asserts every requirement, non-zero on failure
+│   └── 70-destroy.sh       # Teardown: K8s LBs first, then terraform destroy
 └── docs/                   # These documents; decisions/ holds the ADRs
 ```
 
@@ -196,13 +201,19 @@ A thin root that only wires modules together. Each module is a blast-radius boun
 |---|---|
 | [main.tf](../main.tf) | Enables 9 APIs with `disable_on_destroy = false`, then wires `network` → `gke`. Destroy removes our resources, not the project's capabilities. |
 | [variables.tf](../variables.tf) | Mandated CIDRs as defaults, each annotated. |
-| [versions.tf](../versions.tf) | Pins Terraform `>= 1.10` and google `~> 6.0`; declares the `gcs` backend with prefix `online-boutique/root`. The bucket name stays out of code because it is project-specific. |
+| [versions.tf](../versions.tf) | Pins Terraform `>= 1.10` and google `~> 6.0`; declares the `gcs` backend with prefix `gcp-deploy/root`. The bucket name stays out of code because it is project-specific. |
 | [outputs.tf](../outputs.tf) | Cluster name and location, the node SA as proof we are off the Compute default, and a ready-made `get-credentials` command. |
 | [bootstrap/main.tf](../bootstrap/main.tf) | Breaks the chicken-and-egg: Terraform needs a remote backend, but something must create the bucket. Versioning, uniform bucket-level access, enforced public-access prevention, `prevent_destroy`, keep-last-10-versions. |
 | [modules/network/main.tf](../modules/network/main.tf) | Custom-mode VPC (auto-mode would collide with the mandated plan), subnet with two secondary ranges, Private Google Access, flow logs at 50% sampling, Cloud Router + NAT logging errors only. |
 | [modules/gke/main.tf](../modules/gke/main.tf) | Node SA and its five role bindings, then the private regional Autopilot cluster on the REGULAR release channel, with an optional Binary Authorization block. |
-| [scripts/deploy.sh](../scripts/deploy.sh) | Fail-fast, non-interactive, idempotent `kubectl apply`, health-gated `kubectl wait`, real HTTP smoke test, manifests pinned to a release tag. |
-| [scripts/destroy.sh](../scripts/destroy.sh) | Deletes the namespace before Terraform runs, so load balancer forwarding rules created outside Terraform's knowledge cannot block VPC deletion. |
+| [scripts/lib.sh](../scripts/lib.sh) | Helpers and shared defaults sourced by every stage. Cluster name, region and namespace live here once rather than in three copies that drift. |
+| [scripts/10-preflight.sh](../scripts/10-preflight.sh) | Tooling check, `fmt -check`, `validate` on both root modules. Needs no credentials, so it runs straight after a clone. |
+| [scripts/20-bootstrap.sh](../scripts/20-bootstrap.sh) | Auth, project, billing, ADC, the two bootstrap APIs, the state bucket, and `terraform init` against it. Idempotent throughout. |
+| [scripts/30-plan.sh](../scripts/30-plan.sh) | Writes `tfplan`. Separate from apply so the reviewed change and the applied change are the same one — [ADR 0008](decisions/0008-explicit-plan-gate.md). |
+| [scripts/40-apply.sh](../scripts/40-apply.sh) | Applies the saved plan. Takes no `PROJECT_ID`: the variables are baked into the plan file. |
+| [scripts/50-deploy.sh](../scripts/50-deploy.sh) | Fail-fast, non-interactive, idempotent `kubectl apply`, health-gated `kubectl wait`, real HTTP smoke test, manifests pinned to a release tag. |
+| [scripts/60-verify.sh](../scripts/60-verify.sh) | Asserts the mandated ranges are bound to the cluster, nodes are private and carry the dedicated service account, every Deployment is Available and the frontend answers. Exits non-zero on any failure. |
+| [scripts/70-destroy.sh](../scripts/70-destroy.sh) | Deletes the namespace before Terraform runs, so load balancer forwarding rules created outside Terraform's knowledge cannot block VPC deletion. |
 
 ## Failure modes
 

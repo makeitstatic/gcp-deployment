@@ -30,7 +30,7 @@ A **separate `bootstrap/` root module**, run once with local state, creates the 
 - **`prevent_destroy`** — Terraform refuses to delete it
 - a lifecycle rule keeping the last 10 noncurrent versions
 
-The root module then uses that bucket as a `gcs` backend with prefix `online-boutique/root`. The bucket *name* is supplied at init time via `-backend-config`, never hardcoded, because it is project-specific. Provider versions are pinned (`~> 6.0`) and `.terraform.lock.hcl` is committed.
+The root module then uses that bucket as a `gcs` backend with prefix `gcp-deploy/root`. The bucket *name* is supplied at init time via `-backend-config`, never hardcoded, because it is project-specific. Provider versions are pinned (`~> 6.0`) and `.terraform.lock.hcl` is committed.
 
 ## Consequences
 
