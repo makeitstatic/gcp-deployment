@@ -23,6 +23,14 @@ CLUSTER_NAME="${2:-${DEFAULT_CLUSTER_NAME}}"
 REGION="${3:-${DEFAULT_REGION}}"
 SUBNET="${CLUSTER_NAME}-vpc-gke"
 
+# Fetched once, up front: both the node checks and the application checks need
+# it. If this fails nothing below can be verified, so it is fatal rather than a
+# failed assertion.
+gcloud container clusters get-credentials "${CLUSTER_NAME}" \
+  --region "${REGION}" \
+  --project "${PROJECT_ID}" >/dev/null 2>&1 \
+  || die "cannot reach cluster ${CLUSTER_NAME} in ${REGION}. Has stage 40 run?"
+
 FAILURES=0
 
 # Assertions must not abort the run on the first failure — the point is to
@@ -48,13 +56,16 @@ cluster_field() {
     --format="value($1)" 2>/dev/null || true
 }
 
+# describe does not accept --filter, so the ranges are fetched once as
+# "<name>\t<cidr>" lines and matched here instead.
+SECONDARY_RANGES="$(gcloud compute networks subnets describe "${SUBNET}" \
+  --region "${REGION}" \
+  --project "${PROJECT_ID}" \
+  --flatten='secondaryIpRanges[]' \
+  --format='value(secondaryIpRanges.rangeName,secondaryIpRanges.ipCidrRange)' || true)"
+
 secondary_range() {
-  gcloud compute networks subnets describe "${SUBNET}" \
-    --region "${REGION}" \
-    --project "${PROJECT_ID}" \
-    --flatten='secondaryIpRanges[]' \
-    --filter="secondaryIpRanges.rangeName=$1" \
-    --format='value(secondaryIpRanges.ipCidrRange)' 2>/dev/null || true
+  printf '%s\n' "${SECONDARY_RANGES}" | awk -v name="$1" '$1 == name { print $2 }'
 }
 
 # --- Networking (R1-R3) -------------------------------------------------------
@@ -83,22 +94,28 @@ log "Least privilege"
 check "Nodes are private" "True" \
   "$(cluster_field 'privateClusterConfig.enablePrivateNodes')"
 
-check "No node carries an external IP" "" \
-  "$(gcloud compute instances list --project "${PROJECT_ID}" \
-       --format='value(networkInterfaces[0].accessConfigs[0].natIP)' 2>/dev/null \
-     | tr -d '[:space:]' || true)"
+# The claim that matters. A created service account proves nothing; the cluster
+# has to actually provision nodes with it. Omit the Autopilot wiring and this is
+# where it shows. Read from the cluster config, which is always available —
+# Autopilot does not necessarily surface its node VMs as listable instances.
+check "Autopilot provisions nodes with the dedicated service account" \
+  "${CLUSTER_NAME}-nodes@${PROJECT_ID}.iam.gserviceaccount.com" \
+  "$(cluster_field 'autoscaling.autoprovisioningNodePoolDefaults.serviceAccount')"
 
-# The claim that matters. A created service account proves nothing; nodes have
-# to actually run as it. Omit the Autopilot wiring and this is where it shows.
-NODE_SA_ACTUAL="$(gcloud compute instances list --project "${PROJECT_ID}" \
-                    --format='value(serviceAccounts[0].email)' 2>/dev/null \
-                  | sort -u | tr -d '[:space:]' || true)"
-if [[ -z "${NODE_SA_ACTUAL}" ]]; then
-  printf '    \033[33m SKIP \033[0m Nodes run as the dedicated service account (no nodes yet — deploy first)\n'
-else
-  check "Nodes run as the dedicated service account" \
-    "${CLUSTER_NAME}-nodes@${PROJECT_ID}.iam.gserviceaccount.com" "${NODE_SA_ACTUAL}"
-fi
+# Autopilot does not surface its node VMs in this project's Compute inventory,
+# so `gcloud compute instances list` returns nothing and cannot be used here —
+# an empty list would satisfy "no external IP" vacuously. The Kubernetes API
+# always knows. A private node has no ExternalIP address, so any output is a
+# finding.
+check "No node carries an external IP" "" \
+  "$(kubectl get nodes \
+       --output=jsonpath='{range .items[*]}{.status.addresses[?(@.type=="ExternalIP")].address}{"\n"}{end}' \
+     2>/dev/null | tr -d '[:space:]' || true)"
+
+# Guards the check above: with zero nodes it would pass on an empty result.
+NODE_TOTAL="$(kubectl get nodes --no-headers 2>/dev/null | grep -c . || true)"
+check "Cluster has running nodes" "true" \
+  "$([[ "${NODE_TOTAL}" -gt 0 ]] && echo true || echo false)"
 
 check "Node service account holds exactly 5 roles" "5" \
   "$(gcloud projects get-iam-policy "${PROJECT_ID}" \
@@ -119,11 +136,6 @@ check "Provider lock file is committed" "present" \
 # --- Application (R6) ---------------------------------------------------------
 
 log "Application"
-
-gcloud container clusters get-credentials "${CLUSTER_NAME}" \
-  --region "${REGION}" \
-  --project "${PROJECT_ID}" >/dev/null 2>&1 \
-  || die "cannot reach cluster ${CLUSTER_NAME}. Has stage 40 run?"
 
 DEPLOY_TOTAL="$(kubectl get deployments --namespace "${NAMESPACE}" \
                   --no-headers 2>/dev/null | grep -c . || true)"

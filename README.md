@@ -39,7 +39,6 @@ export PROJECT_ID=your-project-id
 ./scripts/40-apply.sh                                      # applies exactly that plan, ~10 min
 ./scripts/50-deploy.sh "$PROJECT_ID"                       # the application
 ./scripts/60-verify.sh "$PROJECT_ID"                       # assert every requirement
-
 ./scripts/70-destroy.sh "$PROJECT_ID"                      # afterwards
 ```
 
