@@ -12,7 +12,7 @@ tags:
 
 ## Context
 
-Nothing in this repository gates an infrastructure change. [deploy.sh](../../scripts/deploy.sh) stands in for the CD stage of a pipeline, but there is no pipeline, so there is no plan-on-PR, no approval step and no second pair of eyes.
+Nothing in this repository gates an infrastructure change. [50-deploy.sh](../../scripts/50-deploy.sh) stands in for the CD stage of a pipeline, but there is no pipeline, so there is no plan-on-PR, no approval step and no second pair of eyes.
 
 Bare `terraform apply` looks like it fills that gap. It prints a plan and waits for `yes`. Two things it does not do:
 
@@ -33,7 +33,7 @@ terraform apply tfplan
 Two exemptions, both deliberate:
 
 - **`bootstrap/`** creates one bucket. The plan is four lines and the ceremony adds nothing.
-- **[destroy.sh](../../scripts/destroy.sh)** keeps `-auto-approve`. It is run repeatedly, and its safety comes from deleting the Kubernetes namespace before Terraform touches the VPC, not from a prompt.
+- **[70-destroy.sh](../../scripts/70-destroy.sh)** keeps `-auto-approve`. It is run repeatedly, and its safety comes from deleting the Kubernetes namespace before Terraform touches the VPC, not from a prompt.
 
 ## Consequences
 
@@ -48,7 +48,7 @@ Two exemptions, both deliberate:
 
 - Two commands where there was one, on every apply.
 - Saved plans go stale. If state changes between plan and apply, Terraform refuses the file and the plan has to be regenerated and re-read. Correct behaviour, and still friction.
-- Plan files can contain sensitive values. `*.tfplan` is gitignored, but a file that exists can be shared carelessly in a way that terminal output cannot.
+- Plan files can contain sensitive values. `tfplan` and `*.tfplan` are both gitignored, but a file that exists can be shared carelessly in a way that terminal output cannot.
 - **It is a convention, not an enforcement.** Nothing prevents anyone running bare `apply`. Only a pipeline that holds the credentials can make this mandatory.
 
 ## Alternatives considered

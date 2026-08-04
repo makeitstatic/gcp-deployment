@@ -73,7 +73,7 @@ Leaving it up for a month costs over a hundred times what actually demonstrating
 
 | Control | Where | Saves |
 |---|---|---|
-| `loadgenerator` scaled to 0 by default | [50-deploy.sh](../scripts/50-deploy.sh) | 300m CPU / 256 Mi billed continuously — and it generates NAT-processed traffic |
+| `loadgenerator` scaled to 0 by default | [50-deploy.sh](../scripts/50-deploy.sh) | 300m CPU / 512 Mi billed continuously (256 Mi requested, rounded up to the per-Pod floor) — and it generates NAT-processed traffic |
 | One-command teardown | [70-destroy.sh](../scripts/70-destroy.sh) | Everything except the state bucket |
 | Flow logs sampled at 50% | [modules/network/main.tf](../modules/network/main.tf) | Half the log ingestion, same forensic value at this scale |
 | NAT logging `ERRORS_ONLY` | [modules/network/main.tf](../modules/network/main.tf) | Logging every translation event would dwarf the signal |

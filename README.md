@@ -85,7 +85,7 @@ Tear it down after every session: Cloud NAT and the load balancer bill while idl
 └── tools/make-pdf.js       # Renders docs/ into solution-architecture.pdf
 ```
 
-There is no runner and no build tool. Each stage takes `PROJECT_ID` the same way, is safe to re-run, and exits non-zero on failure — so a person, a Cloud Build step or a GitHub Actions job can drive the same scripts without anything being ported first.
+There is no runner and no build tool. Every stage that needs a project takes `PROJECT_ID` as its first argument — 10 takes none because it touches nothing, and 40 takes none because the saved plan already carries the variables. All are safe to re-run and exit non-zero on failure, so a person, a Cloud Build step or a GitHub Actions job can drive the same scripts without anything being ported first.
 
 ## The short version of the design
 

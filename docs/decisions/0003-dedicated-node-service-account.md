@@ -47,7 +47,7 @@ Keep this strictly separate from **workload** identity: applications that need G
 
 - Any future node-level agent needing a further permission requires a deliberate role addition — which is the point, but it is friction.
 - Five bindings are five things to keep correct; drift here is silent until something stops shipping telemetry.
-- Autopilot's `auto_provisioning_defaults` is easy to omit. Creating the account without wiring it there produces a cluster that *looks* least-privilege while nodes still run as the default. The `depends_on` in [modules/gke/main.tf](../modules/gke/main.tf) exists so the bindings land before the cluster does.
+- Autopilot's `auto_provisioning_defaults` is easy to omit. Creating the account without wiring it there produces a cluster that *looks* least-privilege while nodes still run as the default. The `depends_on` in [modules/gke/main.tf](../../modules/gke/main.tf) exists so the bindings land before the cluster does.
 
 ## Alternatives considered
 

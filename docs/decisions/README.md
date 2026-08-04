@@ -23,7 +23,9 @@ One file per decision, in [Michael Nygard's format](https://cognitect.com/blog/2
 
 ## Conventions
 
-**Records are immutable once accepted.** A decision that gets reversed is not edited — a new record supersedes it, and the old one gains `Superseded by 00NN`. The value of an ADR is that it shows what was believed *at the time*; editing history destroys exactly the thing that makes it worth keeping.
+**Decisions are not rewritten.** A decision that gets reversed is not edited — a new record supersedes it, and the old one gains `Superseded by 00NN`. The value of an ADR is that it shows what was believed *at the time*, and editing that away destroys the thing worth keeping.
+
+**Facts are corrected in place.** A dead link, a resource that has been renamed, or a consequence that later work has closed gets fixed where it stands. Leaving a record that describes the repository incorrectly helps nobody, and correcting a fact is a different act from rewriting a judgement.
 
 **Statuses:** `Proposed` → `Accepted` → `Superseded by 00NN` (or `Deprecated` where nothing replaces it).
 

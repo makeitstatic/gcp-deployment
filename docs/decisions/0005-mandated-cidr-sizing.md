@@ -24,7 +24,7 @@ VPC address space is painful to reclaim: primary ranges cannot be shrunk in plac
 
 ## Decision
 
-**Implement the mandated ranges exactly as specified.** Record the disagreement in [variables.tf](../variables.tf), in this ADR, and in [02-architecture](../02-architecture.md#address-plan) — visible to anyone reading either the code or the documents, and impossible to mistake for an oversight.
+**Implement the mandated ranges exactly as specified.** Record the disagreement in [variables.tf](../../variables.tf), in this ADR, and in [02-architecture](../02-architecture.md#address-plan) — visible to anyone reading either the code or the documents, and impossible to mistake for an oversight.
 
 ## Consequences
 

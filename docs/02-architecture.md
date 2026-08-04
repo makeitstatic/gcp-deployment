@@ -28,7 +28,7 @@ flowchart TB
 
     shopper -->|"browses and checks out, HTTP"| sys
     eng -->|"terraform apply"| state
-    eng -->|"deploy.sh · kubectl"| sys
+    eng -->|"50-deploy.sh · kubectl"| sys
     sys -->|"pulls images, ships logs and metrics"| gapi
     sys -.->|"manifests fetched at deploy time"| upstream
 
@@ -76,7 +76,7 @@ flowchart TB
 
     user -->|"HTTP"| lb --> gke
     eng -->|"terraform apply"| state
-    eng -->|"kubectl · deploy.sh"| cp
+    eng -->|"kubectl · 50-deploy.sh"| cp
     cp -.->|"manages"| gke
     sa -.->|"nodes run as"| gke
     gke -.-> nat
@@ -194,7 +194,8 @@ A thin root that only wires modules together. Each module is a blast-radius boun
 │   ├── 50-deploy.sh        # Mock CD: apply + health wait + smoke test
 │   ├── 60-verify.sh        # Asserts every requirement, non-zero on failure
 │   └── 70-destroy.sh       # Teardown: K8s LBs first, then terraform destroy
-└── docs/                   # These documents; decisions/ holds the ADRs
+├── docs/                   # These documents; decisions/ holds the ADRs
+└── tools/make-pdf.js       # Renders docs/ into solution-architecture.pdf
 ```
 
 | Path | What it does |
@@ -229,4 +230,4 @@ What breaks, what the blast radius is, and how it presents. Operational response
 | Autopilot scale-up delay | Latency on burst | Pods sit `Pending` while a node is provisioned — the trade for not managing node pools. |
 | Regional quota exhausted | Apply fails | Trial accounts hit `CPUS` or `IN_USE_ADDRESSES` first. No partial-cluster state; re-apply after a quota bump. |
 | State lock left held | All applies blocked | A crashed apply leaves the GCS lock object. Deliberate: blocking is the safe failure. Cleared with `terraform force-unlock`. |
-| Namespace deleted before `terraform destroy` | Orphaned forwarding rules | Precisely what [destroy.sh](../scripts/destroy.sh) sequences around; run out of order and the VPC delete fails. |
+| `terraform destroy` run before the namespace is deleted | Orphaned forwarding rules | Precisely what [70-destroy.sh](../scripts/70-destroy.sh) sequences around; run out of order and the VPC delete fails. |

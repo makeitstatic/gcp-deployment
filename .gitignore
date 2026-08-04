@@ -13,8 +13,10 @@ backend.hcl
 tools/node_modules/
 tools/print.html
 
-# Plans can embed sensitive values.
+# Plans can embed sensitive values. Both patterns: 30-plan.sh writes a file
+# named `tfplan` with no extension, which `*.tfplan` does not match.
 crash.log
+tfplan
 *.tfplan
 
 # Personal working notes, never part of the deliverable.

@@ -44,9 +44,9 @@ The root module then uses that bucket as a `gcs` backend with prefix `gcp-deploy
 
 **Negative**
 
-- Two-step bootstrap is a documented prerequisite rather than a single command — a real papercut for a newcomer, mitigated in [04-runbook](../04-runbook.md#deploy).
+- The bootstrap module is a second root module to understand, with its own state and its own lifecycle. [20-bootstrap.sh](../../scripts/20-bootstrap.sh) runs both Terraform steps as one command, so it is no longer a manual prerequisite, but it is still a second thing in the repository that a newcomer has to account for.
 - A crashed apply leaves the lock held, and the next engineer sees `Error acquiring the state lock` with no obvious owner. Blocking is the safe failure, but it needs `force-unlock` and the judgement to know when that is safe.
-- `backend.hcl` is gitignored, so each engineer supplies the bucket name themselves — one more piece of out-of-band setup.
+- `backend.hcl` is gitignored, so it never travels with the repository. [20-bootstrap.sh](../../scripts/20-bootstrap.sh) regenerates it from `backend.hcl.example`, so nobody types a bucket name, but a fresh clone has no backend configuration until that stage has run.
 - State still contains resource identifiers and any sensitive outputs. Bucket IAM is the only thing protecting it; there is no state encryption beyond Google-managed keys at rest.
 
 ## Alternatives considered

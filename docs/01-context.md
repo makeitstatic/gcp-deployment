@@ -32,7 +32,7 @@ Stated explicitly, because the fastest way to misread this repository is to meas
 
 - **Multi-region or multi-cluster.** One regional cluster in `europe-west4`. Regional gives zone-level resilience; anything beyond that is a cost and complexity decision nobody has made yet.
 - **Multi-tenancy.** Per-tenant namespaces are the direction of travel, but nothing here implements tenant isolation, quotas or per-tenant policy.
-- **Production-grade delivery.** [deploy.sh](../scripts/deploy.sh) is deliberately a stand-in for the final sync step of a real pipeline. There is no build, no test stage, no image signing, no GitOps controller. See [ADR 0007](decisions/0007-pin-manifests-to-release-tag.md) and [06-roadmap](06-roadmap.md).
+- **Production-grade delivery.** [50-deploy.sh](../scripts/50-deploy.sh) is deliberately a stand-in for the final sync step of a real pipeline. There is no build, no test stage, no image signing, no GitOps controller. See [ADR 0007](decisions/0007-pin-manifests-to-release-tag.md) and [06-roadmap](06-roadmap.md).
 - **Modifying the application.** The upstream manifests are applied as published. No forks, no patches, no re-images — so the repository is about the platform, not the app.
 - **Persistent application data.** `redis-cart` uses an `emptyDir`. Carts do not survive a Pod restart, and that is upstream's design, not an oversight here.
 - **Cost optimisation beyond the structural.** Autopilot's per-Pod billing and a zero-replica load generator are in scope; committed-use discounts and workload right-sizing are not, because there is no steady-state load profile to right-size against.

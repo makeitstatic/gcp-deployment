@@ -24,7 +24,7 @@ Seven numbered scripts under [scripts/](../scripts/). The number is the order; t
 | 60 | `60-verify.sh` | Asserts every requirement, exits non-zero on failure | Test and monitor |
 | 70 | `70-destroy.sh` | Namespace first, then `terraform destroy` | Operate — teardown |
 
-Each stage takes `PROJECT_ID` the same way, is safe to re-run, and exits non-zero on failure. That uniformity is what makes them a pipeline without a pipeline tool.
+Every stage that needs a project takes `PROJECT_ID` as its first argument — 10 takes none because it touches nothing, 40 takes none because the plan file already carries the variables, and 20 also takes the billing account. Each is safe to re-run and exits non-zero on failure. That uniformity is what makes them a pipeline without a pipeline tool.
 
 ```mermaid
 flowchart TB
@@ -129,7 +129,7 @@ Terraform also needs Service Usage enabled before it can enable the other nine A
 > [!important] Why the plan is saved rather than confirmed at the prompt
 > Bare `terraform apply` prints a plan and waits for `yes`, but it re-plans at the moment you answer — so what executes is not strictly what you read. `apply tfplan` executes the reviewed plan or fails.
 >
-> The saved plan is also the only artefact this repository produces that can be reviewed *before* the change: attachable to a pull request, readable by someone who is not at the keyboard. Until [real CI](06-roadmap.md#4-real-cicd-replacing-the-mock) provides a pipeline gate, this is the gate. `*.tfplan` is gitignored — plans can embed sensitive values.
+> The saved plan is also the only artefact this repository produces that can be reviewed *before* the change: attachable to a pull request, readable by someone who is not at the keyboard. Until [real CI](06-roadmap.md#4-real-cicd-replacing-the-mock) provides a pipeline gate, this is the gate. `tfplan` and `*.tfplan` are both gitignored — plans can embed sensitive values.
 
 **60 exists so the claims are checkable by machine.** Every other document in this repository asserts that the requirements are met. Stage 60 proves it, and returns a non-zero exit code when it cannot.
 
@@ -139,7 +139,7 @@ Terraform also needs Service Usage enabled before it can enable the other nine A
 ./scripts/60-verify.sh "$PROJECT_ID"
 ```
 
-Eleven assertions, grouped by requirement, each mapping to a success criterion in [01-context](01-context.md#what-done-looks-like). It reports everything wrong in one pass rather than stopping at the first failure.
+Every mandated requirement asserted, grouped by requirement, each mapping to a success criterion in [01-context](01-context.md#what-done-looks-like). It reports everything wrong in one pass rather than stopping at the first failure.
 
 Two are worth understanding rather than trusting:
 
