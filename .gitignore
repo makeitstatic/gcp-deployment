@@ -9,9 +9,14 @@ terraform.tfstate.backup
 backend.hcl
 
 # Doc tooling. solution-architecture.pdf is committed; it is generated from
-# docs/ by tools/make-pdf.js, so never edit it by hand.
-tools/node_modules/
+# docs/ by tools/make-pdf.js, so never edit it by hand. Its dependencies are a
+# deliberate ad-hoc `npm install` rather than a tracked manifest, so everything
+# npm regenerates is ignored. Unscoped node_modules/ because an install run from
+# the repo root instead of tools/ would otherwise land outside the rule.
+node_modules/
 tools/print.html
+tools/package.json
+tools/package-lock.json
 
 # Plans can embed sensitive values. Both patterns: 30-plan.sh writes a file
 # named `tfplan` with no extension, which `*.tfplan` does not match.

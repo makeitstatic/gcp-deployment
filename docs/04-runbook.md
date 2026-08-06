@@ -145,7 +145,7 @@ Two are worth understanding rather than trusting:
 
 **The ranges are bound, not merely present.** A subnet can carry `10.1.0.0/16` while the cluster ignores it. Stage 60 checks the CIDRs on the subnet *and* that `ipAllocationPolicy` points at them, which is what makes the cluster VPC-native rather than routes-based.
 
-**Nodes actually run as the dedicated service account.** `terraform output node_service_account` proves the account was created, nothing more. Stage 60 reads the email off the running instances, which is the failure [ADR 0003](decisions/0003-dedicated-node-service-account.md) warns about: omit the Autopilot wiring and you get a cluster that looks least-privilege while its nodes use the Compute Engine default.
+**Nodes actually run as the dedicated service account.** `terraform output node_service_account` proves the account was created, nothing more. Stage 60 reads `autoscaling.autoprovisioningNodePoolDefaults.serviceAccount` off the cluster — the account Autopilot actually provisions nodes with — because Autopilot does not surface its node VMs as listable Compute instances. That is the failure [ADR 0003](decisions/0003-dedicated-node-service-account.md) warns about: omit the Autopilot wiring and you get a cluster that looks least-privilege while its nodes use the Compute Engine default.
 
 The same checks by hand, if you would rather see them individually:
 
@@ -155,9 +155,14 @@ gcloud container clusters describe gcp-deploy --region europe-west4 \
                   ipAllocationPolicy.clusterSecondaryRangeName,
                   ipAllocationPolicy.servicesSecondaryRangeName)'
 
-# Nodes carry no external IPs, and run as our account not the Compute default
-gcloud compute instances list \
-  --format='table(name, networkInterfaces[0].accessConfigs[0].natIP, serviceAccounts[0].email)'
+# The account Autopilot provisions nodes with, not the Compute Engine default
+gcloud container clusters describe gcp-deploy --region europe-west4 \
+  --format='value(autoscaling.autoprovisioningNodePoolDefaults.serviceAccount)'
+
+# Nodes carry no external IPs. Autopilot node VMs are not listable Compute
+# instances, so ask the Kubernetes API instead — any output at all is a finding.
+kubectl get nodes \
+  --output=jsonpath='{range .items[*]}{.status.addresses[?(@.type=="ExternalIP")].address}{"\n"}{end}'
 
 # The roles that account actually holds — expect exactly five
 gcloud projects get-iam-policy "$PROJECT_ID" \
